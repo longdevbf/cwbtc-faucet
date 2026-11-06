@@ -1,3 +1,6 @@
+# CKBolt fork: pushes, tags and pull requests only run the checks. The CKBolt VPS builds its image locally
+# (compose.yaml, pull_policy: build), so nothing is published automatically. A manual run (Actions tab, "Run workflow")
+# publishes ghcr.io/<owner>/<repo>, i.e. ghcr.io/longdevbf/cwbtc-faucet on this fork, never the upstream namespace.
 name: Publish container
 
 on:
@@ -42,11 +45,8 @@ jobs:
         run: npm run build
 
   publish:
-    if: >-
-      github.event_name != 'pull_request' &&
-      (github.event_name == 'workflow_dispatch' ||
-      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) ||
-      startsWith(github.ref, 'refs/tags/v'))
+    # Manual only on the fork (upstream also published on default-branch pushes and v* tags).
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -87,8 +87,8 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
           labels: |
-            org.opencontainers.image.title=cWBTC Faucet
-            org.opencontainers.image.description=Public CKB testnet cWBTC faucet for Fiber CCH testing
+            org.opencontainers.image.title=CKBolt cWBTC Faucet
+            org.opencontainers.image.description=CKB testnet cWBTC faucet for CKBolt testers (fork of RetricSu/cwbtc-faucet)
 
       - name: Build and push image
         id: push

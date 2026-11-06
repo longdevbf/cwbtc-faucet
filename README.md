@@ -1,6 +1,14 @@
-# cWBTC Faucet
+# CKBolt cWBTC Faucet
 
 Public testnet faucet for `cWBTC`, the CKB xUDT used as fake wrapped BTC in the Fiber CCH demo. It is a plain testnet UDT with 8 decimals. For the demo convention, `1 raw cWBTC = 1 satoshi`, so `1 cWBTC = 100,000,000 raw units`.
+
+This is CKBolt's fork of [RetricSu/cwbtc-faucet](https://github.com/RetricSu/cwbtc-faucet). CKBolt testers use cWBTC to swap test BTC on Lightning for cWBTC on Fiber, and back ([CKBolt guide](https://ckbolt.texlabs.org/app/guide)). Differences from upstream:
+
+- `0.01 cWBTC` per claim (`CLAIM_AMOUNT_RAW=1000000`), enough for many 1,000 to 20,000 sat CKBolt swaps.
+- `147 CKB` per recipient cWBTC cell (`UDT_CELL_CAPACITY_CKB`) instead of a hard-coded 200: the cell occupies 146 bytes, plus a 1 CKB margin. See `src/ckb/capacity.ts`.
+- Tighter demo caps: IP cooldown 30 minutes, 3 claims per IP and 50 claims per day in total.
+- Docker Compose builds the image locally (`ckbolt/cwbtc-faucet:local`, never pulled) and publishes it on `127.0.0.1` only.
+- Deployment runbook for the CKBolt VPS and Cloudflare Tunnel: [docs/CKBOLT-DEPLOY.md](docs/CKBOLT-DEPLOY.md).
 
 ## Existing cWBTC
 
@@ -113,17 +121,17 @@ Docker Compose is the recommended production runtime. It runs the service as the
 ```bash
 ./scripts/init.sh
 # Fund the printed address with testnet cWBTC and CKB first.
-docker compose up -d --pull always --no-build
+docker compose up -d --build
 docker compose ps
 ```
 
-The initializer copies `.env.example` to `.env`, creates a dedicated faucet hot wallet, and generates the other runtime secrets. It is safe to rerun and does not overwrite existing values. It prints only the public CKB testnet address; the private key stays in `secrets/faucet_private_key`. The `secrets/` directory uses mode `0700`; files inside use mode `0644` so Docker Compose can mount them into the unprivileged container.
+The initializer copies `.env.example` to `.env`, builds `ckbolt/cwbtc-faucet:local` from the checkout if it is missing, creates a dedicated faucet hot wallet inside it with no network access, and generates the other runtime secrets. It is safe to rerun and does not overwrite existing values. It prints only the public CKB testnet address; the private key stays in `secrets/faucet_private_key`. The `secrets/` directory uses mode `0700`; files inside use mode `0644` so Docker Compose can mount them into the unprivileged container.
 
 Before a public launch, set `PUBLIC_BASE_URL` and `CORS_ORIGIN` in `.env`. Compose mounts the secret files read-only under `/run/secrets`; raw secret values are not included in the container environment. For a production host, the same files can later be moved to the team's secret manager without changing the application.
 
-For local development, replace the pull and start commands with `docker compose up -d --build` to build the image from the current checkout.
+Compose always builds the image from the current checkout (`pull_policy: build`); it never pulls `ghcr.io/retricsu/cwbtc-faucet`, and `docker compose pull` skips the service.
 
-The service is exposed on port `3008`. Set `FAUCET_PORT` in `.env` when the host port needs to differ. SQLite lives at `/app/data/faucet.sqlite` inside the named volume and survives image replacement or container recreation.
+The service is published on `127.0.0.1:3008` only, for a reverse proxy or tunnel on the same host. Set `FAUCET_PORT` in `.env` when the host port needs to differ. SQLite lives at `/app/data/faucet.sqlite` inside the named volume and survives image replacement or container recreation.
 
 Run exactly one worker-enabled replica. The current queue and SQLite database are designed for one serialized CKB sender; horizontal scaling requires a shared database and a distributed worker lock.
 
@@ -138,25 +146,22 @@ Do not add `-v` to `docker compose down` unless the claim history is intentional
 
 ## Container Publishing
 
-GitHub Actions runs the TypeScript checks and publishes `ghcr.io/retricsu/cwbtc-faucet` to GitHub Container Registry:
+On this fork, GitHub Actions runs the TypeScript checks on pushes, tags and pull requests, and publishes an image only when the workflow is started by hand (Actions tab, Run workflow). The image name comes from the repository, so a manual run publishes `ghcr.io/longdevbf/cwbtc-faucet`, never the upstream namespace. The CKBolt deployment does not use it: the VPS builds `ckbolt/cwbtc-faucet:local` from the checkout.
 
-- pushes to the default branch publish `ghcr.io/retricsu/cwbtc-faucet:latest` and an immutable `sha-*` tag
-- tags such as `v0.1.0` publish `0.1.0` and `0.1` image tags
-- pull requests run checks without publishing an image
 - published manifests support both `linux/amd64` and `linux/arm64`
 - every published image includes a GitHub artifact provenance attestation
 
-The workflow uses the repository-scoped `GITHUB_TOKEN`; no long-lived registry password is required. For predictable production deploys, use the `sha-*` tag or image digest rather than `latest`.
+The workflow uses the repository-scoped `GITHUB_TOKEN`; no long-lived registry password is required.
 
 ## Deployment Notes
 
 1. Run `./scripts/init.sh` and copy the printed public faucet address.
 2. Transfer cWBTC from the issuer wallet to that address.
-3. Deposit enough CKB into the address. Each claim creates an xUDT cell and costs roughly 200 CKB of occupied capacity plus tx fees.
+3. Deposit enough CKB into the address. Each claim creates an xUDT cell holding `UDT_CELL_CAPACITY_CKB` (147 CKB by default; the minimum is 146) plus a tx fee of a few thousand shannons. The recipient receives that CKB with the cWBTC.
 4. Set the public URL values in `.env`, then start the service:
 
 ```bash
-docker compose up -d --pull always --no-build
+docker compose up -d --build
 ```
 
 Monitor:

@@ -608,6 +608,11 @@ pre code {
   line-height: 1.5;
 }
 
+.footnote a {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
 .site-footer {
   display: flex;
   align-items: center;

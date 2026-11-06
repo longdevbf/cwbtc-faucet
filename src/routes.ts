@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { config } from './config.js';
 import { adminSummary, getClaim, insertClaim } from './db.js';
-import { formatCwbtc } from './format.js';
+import { formatCkb, formatCwbtc } from './format.js';
 import { getFaucetBalances } from './ckb/faucet.js';
 import {
   checkClaimEligibility,
@@ -55,6 +55,8 @@ router.get('/api/info', (_req, res) => {
     },
     amount_raw: config.claimAmountRaw,
     amount_display: `${formatCwbtc(config.claimAmountRaw)} cWBTC`,
+    cell_capacity_shannons: config.udtCellCapacityShannons.toString(),
+    cell_capacity_display: `${formatCkb(config.udtCellCapacityShannons)} CKB`,
     address_cooldown_seconds: config.addressCooldownSeconds,
     ip_cooldown_seconds: config.ipCooldownSeconds,
     turnstile_required: config.requireTurnstile,

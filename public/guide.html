@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>cWBTC Developer Guide for Fiber CCH</title>
+    <title>cWBTC Developer Guide (CKBolt faucet)</title>
     <meta
       name="description"
       content="cWBTC token details, Fiber CCH setup, and the public Bottle testnet node configuration."
@@ -13,10 +13,10 @@
   <body>
     <header class="topbar" aria-label="Site header">
       <a class="mark" href="/">
-        <span class="mark-symbol" aria-hidden="true">F</span>
+        <span class="mark-symbol" aria-hidden="true">C</span>
         <span>
-          <strong>Fiber CCH</strong>
-          <small>CKB testnet tool</small>
+          <strong>CKBolt cWBTC faucet</strong>
+          <small>CKB testnet, no monetary value</small>
         </span>
       </a>
       <nav class="nav-links" aria-label="Guide navigation">
@@ -24,7 +24,7 @@
         <a href="#flow">Flow</a>
         <a href="#token">Token</a>
         <a href="#connect">Connect</a>
-        <a href="https://github.com/RetricSu/cwbtc-faucet" rel="noreferrer">Source</a>
+        <a href="https://github.com/longdevbf/cwbtc-faucet" rel="noreferrer">Source</a>
       </nav>
     </header>
 
@@ -36,6 +36,10 @@
           <p class="lede">
             Token details and testnet configuration for opening cWBTC channels and testing
             the CKB UDT to Lightning payment path.
+          </p>
+          <p class="footnote">
+            Testing CKBolt? It swaps test BTC on Lightning for cWBTC on Fiber, and back. Follow the
+            <a href="https://ckbolt.texlabs.org/app/guide" rel="noreferrer">CKBolt guide</a> for its wallet setup.
           </p>
         </div>
         <a class="secondary-action" href="/">Request test cWBTC</a>
@@ -180,6 +184,9 @@
                 <p class="footnote">
                   Fiber v0.8.0 and newer can connect by pubkey after graph data resolves the public node address.
                 </p>
+                <p class="footnote">
+                  Bottle auto-accepts cWBTC channels from 10 cWBTC, more than one claim from this faucet.
+                </p>
               </div>
             </div>
           </article>
@@ -189,11 +196,14 @@
 
     <footer class="site-footer">
       <p>
-        Open-source developer infrastructure for CKB testnet. cWBTC is a test token with no monetary value.
+        Run by CKBolt on CKB testnet, based on the open-source
+        <a href="https://github.com/RetricSu/cwbtc-faucet" rel="noreferrer">cWBTC faucet</a>.
+        cWBTC is a test token with no monetary value.
       </p>
       <nav aria-label="Project references">
         <a href="/">Get cWBTC</a>
-        <a href="https://github.com/RetricSu/cwbtc-faucet" rel="noreferrer">Source code</a>
+        <a href="https://ckbolt.texlabs.org/app/guide" rel="noreferrer">CKBolt guide</a>
+        <a href="https://github.com/longdevbf/cwbtc-faucet" rel="noreferrer">Source code</a>
         <a href="https://github.com/nervosnetwork/fiber" rel="noreferrer">Fiber Network</a>
         <a href="https://docs.nervos.org/" rel="noreferrer">Nervos docs</a>
       </nav>

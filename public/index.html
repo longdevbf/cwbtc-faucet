@@ -3,26 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Get cWBTC for Fiber CCH Testing</title>
+    <title>CKBolt cWBTC Faucet (CKB testnet)</title>
     <meta
       name="description"
-      content="Request test-only cWBTC for Fiber CCH development on CKB testnet."
+      content="Request test-only cWBTC on CKB testnet to try CKBolt swaps between Lightning and Fiber. No monetary value."
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body class="faucet-page">
     <header class="topbar" aria-label="Site header">
       <a class="mark" href="/">
-        <span class="mark-symbol" aria-hidden="true">F</span>
+        <span class="mark-symbol" aria-hidden="true">C</span>
         <span>
-          <strong>Fiber CCH</strong>
-          <small>CKB testnet tool</small>
+          <strong>CKBolt cWBTC faucet</strong>
+          <small>CKB testnet, no monetary value</small>
         </span>
       </a>
       <nav class="nav-links" aria-label="Useful links">
+        <a href="https://ckbolt.texlabs.org/app/guide" rel="noreferrer">CKBolt guide</a>
         <a href="/guide.html">Developer guide</a>
-        <a href="https://github.com/RetricSu/cwbtc-faucet" rel="noreferrer">Source</a>
-        <a href="https://github.com/nervosnetwork/fiber" rel="noreferrer">Fiber</a>
+        <a href="https://github.com/longdevbf/cwbtc-faucet" rel="noreferrer">Source</a>
       </nav>
     </header>
 
@@ -31,7 +31,7 @@
         <section class="claim-panel">
           <div class="panel-head">
             <div>
-              <p class="section-label">CKB testnet</p>
+              <p class="section-label">CKBolt testnet faucet</p>
               <h1 id="claim-title">Request test cWBTC</h1>
             </div>
             <span class="status-pill">testnet</span>
@@ -41,6 +41,10 @@
             <div>
               <dt>Amount per request</dt>
               <dd id="claim-amount">Loading...</dd>
+            </div>
+            <div>
+              <dt>CKB in the cWBTC cell</dt>
+              <dd id="cell-capacity">Loading...</dd>
             </div>
           </dl>
 
@@ -66,6 +70,11 @@
 
           <div id="message" class="message" hidden></div>
 
+          <a class="guide-link" href="https://ckbolt.texlabs.org/app/guide" rel="noreferrer">
+            <span>CKBolt swaps test BTC on Lightning for cWBTC on Fiber, and back.</span>
+            <strong>Open CKBolt guide</strong>
+          </a>
+
           <a class="guide-link" href="/guide.html">
             <span>How do I test cWBTC with Fiber CCH?</span>
             <strong>Open developer guide</strong>
@@ -76,11 +85,14 @@
 
     <footer class="site-footer">
       <p>
-        Open-source developer infrastructure for CKB testnet. cWBTC is a test token with no monetary value.
+        Run by CKBolt on CKB testnet, based on the open-source
+        <a href="https://github.com/RetricSu/cwbtc-faucet" rel="noreferrer">cWBTC faucet</a>.
+        cWBTC is a test token with no monetary value.
       </p>
       <nav aria-label="Project references">
+        <a href="https://ckbolt.texlabs.org/app/guide" rel="noreferrer">CKBolt guide</a>
         <a href="/guide.html">Developer guide</a>
-        <a href="https://github.com/RetricSu/cwbtc-faucet" rel="noreferrer">Source code</a>
+        <a href="https://github.com/longdevbf/cwbtc-faucet" rel="noreferrer">Source code</a>
         <a href="https://docs.nervos.org/" rel="noreferrer">Nervos docs</a>
       </nav>
     </footer>

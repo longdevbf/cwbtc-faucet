@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
+import { CWBTC_CELL_OCCUPIED_CKB, DEFAULT_UDT_CELL_CAPACITY_CKB, SHANNONS_PER_CKB } from './ckb/capacity.js';
 
 type HashType = 'type' | 'data' | 'data1' | 'data2';
 
@@ -26,6 +27,31 @@ function listEnv(name: string, fallback: string[]): string[] {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function rawAmountEnv(name: string, fallback: string): string {
+  const raw = process.env[name]?.trim() || fallback;
+  if (!/^[1-9][0-9]*$/.test(raw)) {
+    throw new Error(`${name} must be a positive integer in raw token units`);
+  }
+  return raw;
+}
+
+/** A CKB amount such as "147" or "146.5", returned in shannons. */
+function ckbEnv(name: string, fallback: bigint, minimum: bigint): bigint {
+  const raw = process.env[name]?.trim();
+  let shannons = fallback * SHANNONS_PER_CKB;
+  if (raw) {
+    const match = /^([0-9]+)(?:\.([0-9]{1,8}))?$/.exec(raw);
+    if (!match) {
+      throw new Error(`${name} must be a CKB amount such as 147 or 146.5`);
+    }
+    shannons = BigInt(match[1]) * SHANNONS_PER_CKB + BigInt((match[2] ?? '').padEnd(8, '0'));
+  }
+  if (shannons < minimum * SHANNONS_PER_CKB) {
+    throw new Error(`${name} must be at least ${minimum} CKB, the occupied size of a cWBTC cell`);
+  }
+  return shannons;
 }
 
 function secretEnv(name: string, fallback = '', allowEmptyFile = true): string {
@@ -72,12 +98,16 @@ export const config = {
   ckbRpcUrl: process.env.CKB_RPC_URL ?? 'https://testnet.ckbapp.dev/',
   faucetPrivateKey: privateKeyEnv(),
 
-  claimAmountRaw: process.env.CLAIM_AMOUNT_RAW ?? '10000000000',
+  // CKBolt default: 1,000,000 raw = 0.01 cWBTC (1 raw unit = 1 sat), enough for many 1,000-20,000 sat CKBolt swaps.
+  claimAmountRaw: rawAmountEnv('CLAIM_AMOUNT_RAW', '1000000'),
+  // CKB capacity put into each recipient cWBTC cell, in shannons. See src/ckb/capacity.ts for the 146 CKB minimum.
+  udtCellCapacityShannons: ckbEnv('UDT_CELL_CAPACITY_CKB', DEFAULT_UDT_CELL_CAPACITY_CKB, CWBTC_CELL_OCCUPIED_CKB),
+  // Demo limits. CKB capacity is the scarce resource: the global cap bounds the daily spend (claims x cell capacity).
   addressCooldownSeconds: numberEnv('ADDRESS_COOLDOWN_SECONDS', 86400),
-  ipCooldownSeconds: numberEnv('IP_COOLDOWN_SECONDS', 3600),
+  ipCooldownSeconds: numberEnv('IP_COOLDOWN_SECONDS', 1800),
   addressDailyClaimLimit: numberEnv('ADDRESS_DAILY_CLAIM_LIMIT', 1),
-  ipDailyClaimLimit: numberEnv('IP_DAILY_CLAIM_LIMIT', 5),
-  globalDailyClaimLimit: numberEnv('GLOBAL_DAILY_CLAIM_LIMIT', 200),
+  ipDailyClaimLimit: numberEnv('IP_DAILY_CLAIM_LIMIT', 3),
+  globalDailyClaimLimit: numberEnv('GLOBAL_DAILY_CLAIM_LIMIT', 50),
 
   databasePath: process.env.DATABASE_PATH ?? './data/faucet.sqlite',
   ipHashSalt: secretEnv('IP_HASH_SALT', 'local-dev-salt-change-me', false),

@@ -1,12 +1,14 @@
 import { ccc } from '@ckb-ccc/ccc';
 import { config } from '../config.js';
 import { parseUdtAmount } from './amount.js';
+import { estimateClaimsByCapacity, udtCellCapacity } from './capacity.js';
 import { collectCellsByLock } from './rpc.js';
 import { sameScript, sameScriptType } from './script.js';
 import type { LiveCell, Script } from './types.js';
 
 const WBTC_TYPE_SCRIPT: Script = config.cwbtc.typeScript;
-const UDT_CELL_CAPACITY = 200_0000_0000n;
+// CKB put into each cWBTC cell (UDT_CELL_CAPACITY_CKB, default 147 CKB = 146 occupied + 1 margin; upstream used 200).
+const UDT_CELL_CAPACITY = config.udtCellCapacityShannons;
 
 interface WbtcCell extends LiveCell {
   amount: bigint;
@@ -82,7 +84,7 @@ export async function getFaucetBalances(): Promise<{
     totalCapacityShannons: totalCapacity.toString(),
     plainCapacityShannons: plainCapacity.toString(),
     estimatedClaimsByCwbtc: claimAmount > 0n ? Number(cwbtcRaw / claimAmount) : 0,
-    estimatedClaimsByCapacity: Number(totalCapacity / UDT_CELL_CAPACITY),
+    estimatedClaimsByCapacity: estimateClaimsByCapacity(totalCapacity, UDT_CELL_CAPACITY),
   };
 }
 
@@ -103,13 +105,14 @@ export async function transferCwbtc(recipientAddress: string, amountRaw: bigint)
     WBTC_TYPE_SCRIPT.args,
   );
   const tx = ccc.Transaction.from({});
+  const recipientData = ccc.numLeToBytes(amountRaw, 16);
   tx.addOutput(
     {
-      capacity: UDT_CELL_CAPACITY,
+      capacity: udtCellCapacity(UDT_CELL_CAPACITY, { lock: recipientLock, type: typeScript }, recipientData),
       lock: recipientLock,
       type: typeScript,
     },
-    ccc.numLeToBytes(amountRaw, 16),
+    recipientData,
   );
 
   await tx.addCellDepsOfKnownScripts(client, ccc.KnownScript.XUdt);
@@ -121,13 +124,14 @@ export async function transferCwbtc(recipientAddress: string, amountRaw: bigint)
     throw new Error(`Insufficient cWBTC: have ${inputRaw.toString()}, need ${amountRaw.toString()}`);
   }
   if (changeRaw > 0n) {
+    const changeData = ccc.numLeToBytes(changeRaw, 16);
     tx.addOutput(
       {
-        capacity: UDT_CELL_CAPACITY,
+        capacity: udtCellCapacity(UDT_CELL_CAPACITY, { lock: faucetLockScript, type: typeScript }, changeData),
         lock: faucetLockScript,
         type: typeScript,
       },
-      ccc.numLeToBytes(changeRaw, 16),
+      changeData,
     );
   }
 

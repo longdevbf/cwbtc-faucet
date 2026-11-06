@@ -1,6 +1,6 @@
 # cWBTC Faucet Operations
 
-This document is for the next operator or agent taking over the public testnet faucet.
+This document is for the next operator or agent taking over the public testnet faucet. For the CKBolt deployment (VPS, Cloudflare Tunnel, funding amounts), start with [CKBOLT-DEPLOY.md](CKBOLT-DEPLOY.md).
 
 ## Secrets
 
@@ -30,7 +30,7 @@ npm run send-cwbtc -- <hot-wallet-ckt-address>=10000
 
 3. Deposit CKB testnet capacity to the hot wallet. `offckb deposit` is fine for testnet.
 
-Each successful claim creates a recipient xUDT cell. Budget roughly `200 CKB` occupied capacity per claim plus fees. cWBTC itself is abundant; CKB capacity is the resource that will run out first.
+Each successful claim creates a recipient xUDT cell holding `UDT_CELL_CAPACITY_CKB` (default `147 CKB`: 146 bytes occupied plus a 1 CKB margin, see `src/ckb/capacity.ts`) plus a small fee. The recipient receives that CKB with the cWBTC. cWBTC itself is abundant; CKB capacity is the resource that will run out first.
 
 ## Runtime
 
@@ -90,16 +90,18 @@ Current controls:
 - global daily cap
 - optional Cloudflare Turnstile
 
-Recommended public settings:
+CKBolt defaults (the global cap bounds the daily CKB spend to 50 x 147 = 7,350 CKB):
 
 ```env
-REQUIRE_TURNSTILE=true
+REQUIRE_TURNSTILE=false   # set true with a Turnstile widget if abuse appears
 ADDRESS_COOLDOWN_SECONDS=86400
-IP_COOLDOWN_SECONDS=3600
+IP_COOLDOWN_SECONDS=1800
 ADDRESS_DAILY_CLAIM_LIMIT=1
-IP_DAILY_CLAIM_LIMIT=5
-GLOBAL_DAILY_CLAIM_LIMIT=200
+IP_DAILY_CLAIM_LIMIT=3
+GLOBAL_DAILY_CLAIM_LIMIT=50
 ```
+
+Upstream's public faucet uses `IP_COOLDOWN_SECONDS=3600`, `IP_DAILY_CLAIM_LIMIT=5` and `GLOBAL_DAILY_CLAIM_LIMIT=200` with `REQUIRE_TURNSTILE=true` recommended.
 
 If abuse appears, add one of:
 
@@ -144,7 +146,7 @@ CORS_ORIGIN=https://<faucet-domain>
 ```
 
 ```bash
-docker compose up -d --pull always --no-build
+docker compose up -d --build
 docker compose ps
 ```
 
@@ -159,8 +161,7 @@ Useful operations:
 ```bash
 docker compose logs -f faucet
 docker compose restart faucet
-docker compose pull faucet
-docker compose up -d --no-build
+docker compose up -d --build   # after git pull: rebuilds the local image and recreates the container
 docker compose down
 ```
 

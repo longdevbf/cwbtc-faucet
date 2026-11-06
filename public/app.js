@@ -1,6 +1,7 @@
 const form = document.querySelector('#claim-form');
 const message = document.querySelector('#message');
 const claimAmount = document.querySelector('#claim-amount');
+const cellCapacity = document.querySelector('#cell-capacity');
 const turnstileMount = document.querySelector('#turnstile');
 const copyButtons = document.querySelectorAll('[data-copy-target]');
 
@@ -44,6 +45,9 @@ async function jsonFetch(url, options) {
 async function loadInfo() {
   const info = await jsonFetch('/api/info');
   claimAmount.textContent = info.amount_display;
+  if (cellCapacity && info.cell_capacity_display) {
+    cellCapacity.textContent = info.cell_capacity_display;
+  }
   if (info.turnstile_required && info.turnstile_site_key) {
     const script = document.createElement('script');
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';

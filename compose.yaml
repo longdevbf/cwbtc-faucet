@@ -1,8 +1,14 @@
+# CKBolt cWBTC faucet. The image is built from this checkout (never pulled from a registry) and the port is published
+# on 127.0.0.1 only: the public hostname reaches it through the owner's Cloudflare Tunnel. Runbook: docs/CKBOLT-DEPLOY.md.
+name: ckbolt-faucet
+
 services:
   faucet:
     build:
       context: .
-    image: ${FAUCET_IMAGE:-ghcr.io/retricsu/cwbtc-faucet:latest}
+    image: ${FAUCET_IMAGE:-ckbolt/cwbtc-faucet:local}
+    # Always build locally: `docker compose up` and `docker compose pull` never fetch ghcr.io/retricsu/cwbtc-faucet.
+    pull_policy: build
     restart: unless-stopped
     init: true
     environment:
@@ -13,12 +19,13 @@ services:
       TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-1}"
       CKB_RPC_URL: "${CKB_RPC_URL:-https://testnet.ckbapp.dev/}"
       FAUCET_PRIVATE_KEY_FILE: /run/secrets/faucet_private_key
-      CLAIM_AMOUNT_RAW: "${CLAIM_AMOUNT_RAW:-10000000000}"
+      CLAIM_AMOUNT_RAW: "${CLAIM_AMOUNT_RAW:-1000000}"
+      UDT_CELL_CAPACITY_CKB: "${UDT_CELL_CAPACITY_CKB:-147}"
       ADDRESS_COOLDOWN_SECONDS: "${ADDRESS_COOLDOWN_SECONDS:-86400}"
-      IP_COOLDOWN_SECONDS: "${IP_COOLDOWN_SECONDS:-3600}"
+      IP_COOLDOWN_SECONDS: "${IP_COOLDOWN_SECONDS:-1800}"
       ADDRESS_DAILY_CLAIM_LIMIT: "${ADDRESS_DAILY_CLAIM_LIMIT:-1}"
-      IP_DAILY_CLAIM_LIMIT: "${IP_DAILY_CLAIM_LIMIT:-5}"
-      GLOBAL_DAILY_CLAIM_LIMIT: "${GLOBAL_DAILY_CLAIM_LIMIT:-200}"
+      IP_DAILY_CLAIM_LIMIT: "${IP_DAILY_CLAIM_LIMIT:-3}"
+      GLOBAL_DAILY_CLAIM_LIMIT: "${GLOBAL_DAILY_CLAIM_LIMIT:-50}"
       DATABASE_PATH: /app/data/faucet.sqlite
       IP_HASH_SALT_FILE: /run/secrets/ip_hash_salt
       WORKER_ENABLED: "${WORKER_ENABLED:-true}"
@@ -29,8 +36,9 @@ services:
       TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
       TURNSTILE_SECRET_KEY_FILE: /run/secrets/turnstile_secret_key
       ADMIN_TOKEN_FILE: /run/secrets/admin_token
+    # Loopback only. A public bind would let clients forge X-Forwarded-For and dodge the IP limits.
     ports:
-      - "${FAUCET_PORT:-3008}:3008"
+      - "127.0.0.1:${FAUCET_PORT:-3008}:3008"
     secrets:
       - faucet_private_key
       - ip_hash_salt

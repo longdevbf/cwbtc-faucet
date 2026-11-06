@@ -8,6 +8,11 @@ export function formatCwbtc(rawAmount: string | bigint): string {
   return `${whole}.${fraction.toString().padStart(8, '0').replace(/0+$/, '')}`;
 }
 
+/** CKB also has 8 decimals: 1 CKB = 100,000,000 shannons. */
+export function formatCkb(shannons: string | bigint): string {
+  return formatCwbtc(shannons);
+}
+
 export function bigIntToHex(value: bigint): string {
   return `0x${value.toString(16)}`;
 }

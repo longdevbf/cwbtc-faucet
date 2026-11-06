@@ -1,0 +1,21 @@
+# Optional override for the CKBolt VPS, where cloudflared runs in a container (ckbolt-testnet-cloudflared-1, compose
+# project ckbolt-testnet) and so cannot reach 127.0.0.1:3008 on the host. It also joins the faucet to cloudflared's
+# Docker network, where the tunnel reaches it at http://ckbolt-faucet:3008. The loopback port in compose.yaml stays for
+# the health and admin commands run on the host. Runbook: docs/CKBOLT-DEPLOY.md, section 5.
+#
+# Turn it on for every docker compose command in this folder by adding to .env:
+#   COMPOSE_FILE=compose.yaml:compose.tunnel.yaml
+#   CLOUDFLARED_NETWORK=ckbolt-testnet_edge   # the network cloudflared is on (docker inspect, section 5)
+services:
+  faucet:
+    networks:
+      default: {}
+      tunnel:
+        aliases:
+          - ckbolt-faucet
+
+networks:
+  tunnel:
+    # Created by the ckbolt-testnet project; this project only joins it and never creates or removes it.
+    external: true
+    name: ${CLOUDFLARED_NETWORK:-ckbolt-testnet_edge}
