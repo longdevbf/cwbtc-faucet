@@ -114,7 +114,7 @@ export const config = {
 
   workerEnabled: booleanEnv('WORKER_ENABLED', true),
   workerPollMs: numberEnv('WORKER_POLL_MS', 3000),
-  txConfirmTimeoutMs: numberEnv('TX_CONFIRM_TIMEOUT_MS', 180000),
+  txConfirmTimeoutMs: numberEnv('TX_CONFIRM_TIMEOUT_MS', 900000),
   txConfirmPollMs: numberEnv('TX_CONFIRM_POLL_MS', 3000),
 
   requireTurnstile,
