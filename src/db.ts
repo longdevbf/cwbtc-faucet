@@ -111,6 +111,13 @@ export function latestClaimForAddress(address: string): ClaimRow | undefined {
     .get(address) as ClaimRow | undefined;
 }
 
+/** The most recent claim from this network (salted IP hash) made at or after `since`, if any. */
+export function latestClaimForIpSince(ipHash: string, since: number): ClaimRow | undefined {
+  return db
+    .prepare('SELECT * FROM claims WHERE ip_hash = ? AND created_at >= ? ORDER BY created_at DESC LIMIT 1')
+    .get(ipHash, since) as ClaimRow | undefined;
+}
+
 export function adminSummary(): Record<string, unknown> {
   const byStatus = db
     .prepare('SELECT status, COUNT(*) AS count FROM claims GROUP BY status ORDER BY status')

@@ -26,6 +26,15 @@ export const CWBTC_CELL_MARGIN_CKB = 1n;
 /** Default for UDT_CELL_CAPACITY_CKB: 147 CKB per cWBTC cell. The upstream faucet used 200. */
 export const DEFAULT_UDT_CELL_CAPACITY_CKB = CWBTC_CELL_OCCUPIED_CKB + CWBTC_CELL_MARGIN_CKB;
 
+/** A JoyID lock's args are 22 bytes (2-byte mode + 20-byte hash), 2 more than a standard lock's 20. */
+export const JOYID_LOCK_EXTRA_BYTES = 2n;
+
+/** What a claim to a JoyID address puts in its cWBTC cell: the configured capacity, or 148 CKB if that is more. */
+export function joyIdCellCapacity(configuredShannons: bigint): bigint {
+  const minimum = (CWBTC_CELL_OCCUPIED_CKB + JOYID_LOCK_EXTRA_BYTES) * SHANNONS_PER_CKB;
+  return configuredShannons > minimum ? configuredShannons : minimum;
+}
+
 /** Smallest plain CKB cell for a secp256k1 lock (8 + 53 bytes); the fee change cell needs it. */
 export const PLAIN_CELL_OCCUPIED_CKB = 61n;
 

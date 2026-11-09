@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { adminSummary, getClaim, insertClaim } from './db.js';
 import { formatCkb, formatCwbtc } from './format.js';
 import { getFaucetBalances } from './ckb/faucet.js';
+import { joyIdCellCapacity } from './ckb/capacity.js';
 import {
   checkClaimEligibility,
   hashIp,
@@ -56,7 +57,7 @@ router.get('/api/info', (_req, res) => {
     amount_raw: config.claimAmountRaw,
     amount_display: `${formatCwbtc(config.claimAmountRaw)} cWBTC`,
     cell_capacity_shannons: config.udtCellCapacityShannons.toString(),
-    cell_capacity_display: `${formatCkb(config.udtCellCapacityShannons)} CKB`,
+    cell_capacity_display: cellCapacityDisplay(config.udtCellCapacityShannons),
     address_cooldown_seconds: config.addressCooldownSeconds,
     ip_cooldown_seconds: config.ipCooldownSeconds,
     turnstile_required: config.requireTurnstile,
@@ -151,3 +152,10 @@ router.get('/api/admin/summary', (req, res) => {
 });
 
 export default router;
+
+/** "147 CKB (148 for JoyID)": a JoyID address's cWBTC cell needs 2 more CKB than a standard one's. */
+function cellCapacityDisplay(configuredShannons: bigint): string {
+  const joyId = joyIdCellCapacity(configuredShannons);
+  const standard = `${formatCkb(configuredShannons)} CKB`;
+  return joyId === configuredShannons ? standard : `${standard} (${formatCkb(joyId)} for JoyID)`;
+}

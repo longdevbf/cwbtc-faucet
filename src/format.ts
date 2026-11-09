@@ -16,3 +16,15 @@ export function formatCkb(shannons: string | bigint): string {
 export function bigIntToHex(value: bigint): string {
   return `0x${value.toString(16)}`;
 }
+
+const MS_PER_MINUTE = 60_000;
+const MINUTES_PER_HOUR = 60;
+
+/** A wait in whole minutes, rounded up, as "18 min" or "23 h 48 min" (never "0 min" while any time is left). */
+export function formatWait(ms: number): string {
+  const minutes = Math.max(1, Math.ceil(ms / MS_PER_MINUTE));
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  const rest = minutes % MINUTES_PER_HOUR;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}

@@ -20,6 +20,8 @@ CKBolt testers use it to swap test BTC on Lightning for cWBTC on Fiber, and back
 | Image | pulled from `ghcr.io/retricsu/cwbtc-faucet:latest` | built locally as `ckbolt/cwbtc-faucet:local` (`pull_policy: build`) | No third-party image runs with the hot-wallet key |
 | Port | `3008` on all interfaces | `127.0.0.1:3008`, plus cloudflared's Docker network through `compose.tunnel.yaml` (section 5) | Only cloudflared reaches it; a public port would let clients forge `X-Forwarded-For` |
 | Compose project | directory name | `ckbolt-faucet` (volume `ckbolt-faucet_faucet-data`) | Stable names, no clash with `ckbolt-testnet` |
+| Recipient address | standard secp256k1 lock only | standard secp256k1 lock or JoyID (`src/ckb/recipient.ts`); a JoyID cell gets 148 CKB | CKBolt testers mostly use JoyID; its lock args are 2 bytes longer |
+| Cooldown messages | "after the IP cooldown", seconds for an address | the time left, e.g. "in 18 min" or "in 23 h 48 min" | Testers could not tell how long to wait |
 
 The token, its type script and the anti-sybil design (pending-claim lock, address and IP cooldowns, daily caps per
 address, IP and globally, optional Turnstile) are unchanged. All values above are overridable in `.env`.
@@ -189,8 +191,8 @@ and apply with `docker compose up -d --build`.
 - `PUBLIC_BASE_URL` is informational in the current code; keep it accurate.
 - `TRUST_PROXY_HOPS=1` makes the app take the visitor IP from the last `X-Forwarded-For` entry, which Cloudflare sets.
   The IP cooldowns depend on it. Check once after going public: claim from two different networks (for example a phone
-  on mobile data and a laptop) within 30 minutes. If the second gets "This network can claim again after the IP
-  cooldown", the header is not reaching the app and every visitor shares one IP; tell the maintainer.
+  on mobile data and a laptop) within 30 minutes. If the second gets "This network can claim again in … min", the
+  header is not reaching the app and every visitor shares one IP; tell the maintainer.
 
 Optional, against abuse: enable Cloudflare Turnstile. In the Cloudflare dashboard, Turnstile, Add widget for
 `ckbolt-faucet.texlabs.org`; put the secret key in `secrets/turnstile_secret_key` (one line), set

@@ -2,8 +2,9 @@ import { createHash } from 'node:crypto';
 import type { Request } from 'express';
 import { ccc } from '@ckb-ccc/ccc';
 import { config } from './config.js';
-import { countClaims, hasActiveClaim, latestClaimForAddress } from './db.js';
-import { sameScriptType } from './ckb/script.js';
+import { countClaims, hasActiveClaim, latestClaimForAddress, latestClaimForIpSince } from './db.js';
+import { isAllowedRecipientLock, RECIPIENT_LOCK_MESSAGE, recipientLockTypes } from './ckb/recipient.js';
+import { formatWait } from './format.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -19,9 +20,8 @@ export async function validateTestnetAddress(address: string): Promise<string | 
   try {
     const client = new ccc.ClientPublicTestnet({ url: config.ckbRpcUrl });
     const recipient = await ccc.Address.fromString(address, client);
-    const secp256k1 = await client.getKnownScript(ccc.KnownScript.Secp256k1Blake160);
-    if (!sameScriptType(recipient.script, secp256k1)) {
-      return 'Recipient must use the standard CKB secp256k1 lock';
+    if (!isAllowedRecipientLock(recipient.script, await recipientLockTypes(client))) {
+      return RECIPIENT_LOCK_MESSAGE;
     }
     return null;
   } catch {
@@ -47,16 +47,13 @@ export function checkClaimEligibility(address: string, ipHash: string): string |
 
   const latest = latestClaimForAddress(address);
   if (latest && latest.cooldown_until > now) {
-    const seconds = Math.ceil((latest.cooldown_until - now) / 1000);
-    return `This address can claim again in ${seconds}s`;
+    return `This address can claim again in ${formatWait(latest.cooldown_until - now)}`;
   }
 
-  const ipCooldownCount = countClaims('ip_hash = ? AND created_at >= ?', [
-    ipHash,
-    now - config.ipCooldownSeconds * 1000,
-  ]);
-  if (ipCooldownCount > 0) {
-    return `This network can claim again after the IP cooldown`;
+  const ipCooldownMs = config.ipCooldownSeconds * 1000;
+  const latestFromIp = latestClaimForIpSince(ipHash, now - ipCooldownMs);
+  if (latestFromIp) {
+    return `This network can claim again in ${formatWait(latestFromIp.created_at + ipCooldownMs - now)}`;
   }
 
   const addressDailyCount = countClaims('address = ? AND created_at >= ?', [address, dayAgo]);

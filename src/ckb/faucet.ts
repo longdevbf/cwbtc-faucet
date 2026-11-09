@@ -2,8 +2,9 @@ import { ccc } from '@ckb-ccc/ccc';
 import { config } from '../config.js';
 import { parseUdtAmount } from './amount.js';
 import { estimateClaimsByCapacity, udtCellCapacity } from './capacity.js';
+import { isAllowedRecipientLock, RECIPIENT_LOCK_MESSAGE, recipientLockTypes } from './recipient.js';
 import { collectCellsByLock } from './rpc.js';
-import { sameScript, sameScriptType } from './script.js';
+import { sameScript } from './script.js';
 import type { LiveCell, Script } from './types.js';
 
 const WBTC_TYPE_SCRIPT: Script = config.cwbtc.typeScript;
@@ -95,8 +96,8 @@ export async function transferCwbtc(recipientAddress: string, amountRaw: bigint)
   const faucetLockScript = (await signer.getAddressObjSecp256k1()).script;
   const recipientLock = (await ccc.Address.fromString(recipientAddress, client)).script;
 
-  if (!sameScriptType(recipientLock, faucetLockScript)) {
-    throw new Error('Recipient must be a CKB testnet secp256k1 address');
+  if (!isAllowedRecipientLock(recipientLock, await recipientLockTypes(client))) {
+    throw new Error(RECIPIENT_LOCK_MESSAGE);
   }
 
   const typeScript = await ccc.Script.fromKnownScript(
