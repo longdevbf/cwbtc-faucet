@@ -4,14 +4,16 @@ import { z } from 'zod';
 import { config } from './config.js';
 import { adminSummary, getClaim, insertClaim } from './db.js';
 import { formatCkb, formatCwbtc } from './format.js';
-import { getFaucetBalances } from './ckb/faucet.js';
+import { getCachedFaucetBalances } from './ckb/faucet.js';
 import { joyIdCellCapacity } from './ckb/capacity.js';
 import {
   checkClaimEligibility,
+  clientNetwork,
+  hasBearerToken,
   hashIp,
   normalizeAddress,
   requestIp,
-  validateTestnetAddress,
+  resolveRecipient,
   verifyTurnstile,
 } from './security.js';
 
@@ -67,7 +69,7 @@ router.get('/api/info', (_req, res) => {
 
 router.get('/api/balance', async (_req, res, next) => {
   try {
-    const balances = await getFaucetBalances();
+    const balances = await getCachedFaucetBalances();
     res.json({
       ...balances,
       cwbtc_display: `${formatCwbtc(balances.cwbtcRaw)} cWBTC`,
@@ -93,12 +95,12 @@ router.post('/api/claims', async (req: Request, res: Response, next) => {
       return;
     }
 
-    const address = normalizeAddress(parsed.data.address);
-    const addressError = await validateTestnetAddress(address);
-    if (addressError) {
-      res.status(400).json({ ok: false, message: addressError });
+    const recipient = await resolveRecipient(normalizeAddress(parsed.data.address));
+    if (!recipient.ok) {
+      res.status(400).json({ ok: false, message: recipient.error });
       return;
     }
+    const { address } = recipient;
 
     const ip = requestIp(req);
     const turnstileError = await verifyTurnstile(parsed.data.turnstileToken, ip);
@@ -107,7 +109,7 @@ router.post('/api/claims', async (req: Request, res: Response, next) => {
       return;
     }
 
-    const ipHash = hashIp(ip);
+    const ipHash = hashIp(clientNetwork(ip));
     const eligibilityError = checkClaimEligibility(address, ipHash);
     if (eligibilityError) {
       res.status(429).json({ ok: false, message: eligibilityError });
@@ -144,7 +146,7 @@ router.get('/api/claims/:id', (req, res) => {
 });
 
 router.get('/api/admin/summary', (req, res) => {
-  if (!config.adminToken || req.get('authorization') !== `Bearer ${config.adminToken}`) {
+  if (!hasBearerToken(req.get('authorization'), config.adminToken)) {
     res.status(401).json({ ok: false, message: 'Unauthorized' });
     return;
   }

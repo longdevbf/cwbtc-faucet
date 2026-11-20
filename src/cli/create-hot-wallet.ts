@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { ccc } from '@ckb-ccc/ccc';
+import { ccc } from '@ckb-ccc/core';
 import { config } from '../config.js';
 
 const privateKey = `0x${randomBytes(32).toString('hex')}`;

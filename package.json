@@ -9,10 +9,11 @@
     "start": "node dist/index.js",
     "test": "tsx --test src/ckb/*.test.ts src/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "wallet:create": "tsx src/cli/create-hot-wallet.ts"
+    "wallet:create": "tsx src/cli/create-hot-wallet.ts",
+    "claims:fail-pending": "tsx src/cli/fail-pending-claims.ts"
   },
   "dependencies": {
-    "@ckb-ccc/ccc": "1.2.3",
+    "@ckb-ccc/core": "1.16.1",
     "better-sqlite3": "^11.9.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -22,6 +23,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@ckb-ccc/ccc": "1.2.3",
     "@types/better-sqlite3": "^7.6.12",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

@@ -112,7 +112,7 @@ If abuse appears, add one of:
 
 ## Dependency Notes
 
-The project uses `@ckb-ccc/ccc` for transaction building and signing because the original cWBTC issuance scripts already use it. `npm audit --omit=dev` currently reports low-severity transitive findings from CCC's wallet adapter dependency chain. Recheck before public launch and upgrade CCC when a clean release is available.
+The project uses `@ckb-ccc/core` for transaction building and signing (the full `@ckb-ccc/ccc`, with browser wallet connectors, is only a dev dependency for the tests). Recheck `npm audit --omit=dev` before each release.
 
 ## Safe Browsing Review
 

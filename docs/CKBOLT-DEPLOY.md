@@ -264,8 +264,18 @@ docker compose stop faucet
 docker run --rm --user root --entrypoint sh -v ckbolt-faucet_faucet-data:/app/data -v "$PWD/backups:/backup:ro" \
   ckbolt/cwbtc-faucet:local -c 'rm -f /app/data/faucet.sqlite-wal /app/data/faucet.sqlite-shm &&
   cp /backup/faucet-YYYY-MM-DD.sqlite /app/data/faucet.sqlite && chown node:node /app/data/faucet.sqlite'
+# Claims that were queued or being sent when the backup was taken may have been paid since: mark them failed so the
+# worker does not send them again (sent claims keep their transaction and are confirmed as usual).
+docker compose run --rm --no-deps faucet node dist/cli/fail-pending-claims.js
 docker compose start faucet
 ```
+
+The faucet counts rate limits per IPv4 address and per IPv6 /64, and per recipient lock (one lock written in several
+address formats is one recipient). It sends only to standard CKB addresses with 20-byte args and JoyID addresses with
+22-byte args, and refuses any claim whose cWBTC cell would need more than the configured capacity plus 2 CKB.
+`/api/balance` reuses its answer for `BALANCE_CACHE_SECONDS` (default 60). To turn on Cloudflare Turnstile, set
+`REQUIRE_TURNSTILE=true` and `TURNSTILE_SITE_KEY` in `.env`, put the secret key in `secrets/turnstile_secret_key`, and
+recreate the container.
 
 ## 7. Container publishing on this fork
 

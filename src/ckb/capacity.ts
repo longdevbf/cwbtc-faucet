@@ -1,4 +1,5 @@
-import { ccc } from '@ckb-ccc/ccc';
+import { ccc } from '@ckb-ccc/core';
+import { formatCkb } from '../format.js';
 
 export const SHANNONS_PER_CKB = 100_000_000n;
 
@@ -33,6 +34,31 @@ export const JOYID_LOCK_EXTRA_BYTES = 2n;
 export function joyIdCellCapacity(configuredShannons: bigint): bigint {
   const minimum = (CWBTC_CELL_OCCUPIED_CKB + JOYID_LOCK_EXTRA_BYTES) * SHANNONS_PER_CKB;
   return configuredShannons > minimum ? configuredShannons : minimum;
+}
+
+/**
+ * Most a claim's cWBTC cell may hold above the configured capacity: the 2 CKB of a JoyID lock's longer args. A claim whose
+ * cell would need more is refused (claimCapacityError), whatever the recipient lock.
+ */
+export const CLAIM_CAPACITY_MARGIN_CKB = JOYID_LOCK_EXTRA_BYTES;
+
+/** The largest capacity, in shannons, the faucet puts into one claim's cWBTC cell. */
+export function maxClaimCellCapacity(configuredShannons: bigint): bigint {
+  return configuredShannons + CLAIM_CAPACITY_MARGIN_CKB * SHANNONS_PER_CKB;
+}
+
+/**
+ * Null when a claim's cWBTC cell of `capacityShannons` is within maxClaimCellCapacity, else why the claim is refused.
+ * The backstop behind the recipient args check (src/ckb/recipient.ts): no lock may make one claim cost several times the
+ * configured CKB.
+ */
+export function claimCapacityError(capacityShannons: bigint, configuredShannons: bigint): string | null {
+  const max = maxClaimCellCapacity(configuredShannons);
+  if (capacityShannons <= max) return null;
+  return (
+    `This address would need ${formatCkb(capacityShannons)} CKB in its cWBTC cell, more than the faucet gives per claim ` +
+    `(at most ${formatCkb(max)} CKB). Use a standard CKB address or a JoyID address.`
+  );
 }
 
 /** Smallest plain CKB cell for a secp256k1 lock (8 + 53 bytes); the fee change cell needs it. */

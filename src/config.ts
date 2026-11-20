@@ -14,6 +14,12 @@ function numberEnv(name: string, fallback: number): number {
   return parsed;
 }
 
+function nonNegativeNumberEnv(name: string, fallback: number): number {
+  const parsed = numberEnv(name, fallback);
+  if (parsed < 0) throw new Error(`${name} must be 0 or more`);
+  return parsed;
+}
+
 function booleanEnv(name: string, fallback: boolean): boolean {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -96,6 +102,9 @@ export const config = {
   trustProxyHops: numberEnv('TRUST_PROXY_HOPS', 1),
 
   ckbRpcUrl: process.env.CKB_RPC_URL ?? 'https://testnet.ckbapp.dev/',
+  // How long /api/balance reuses its last answer. Each fresh answer pages through the hot wallet's cells on the public
+  // CKB RPC (shared with the hub's Fiber nodes), so requests within this window, and concurrent ones, share one lookup.
+  balanceCacheSeconds: nonNegativeNumberEnv('BALANCE_CACHE_SECONDS', 60),
   faucetPrivateKey: privateKeyEnv(),
 
   // CKBolt default: 1,000,000 raw = 0.01 cWBTC (1 raw unit = 1 sat), enough for many 1,000-20,000 sat CKBolt swaps.

@@ -1,19 +1,16 @@
-import { ccc } from '@ckb-ccc/ccc';
+import { ccc } from '@ckb-ccc/core';
+import { cachedLoader } from '../cache.js';
 import { config } from '../config.js';
 import { parseUdtAmount } from './amount.js';
-import { estimateClaimsByCapacity, udtCellCapacity } from './capacity.js';
-import { isAllowedRecipientLock, RECIPIENT_LOCK_MESSAGE, recipientLockTypes } from './recipient.js';
+import { claimCapacityError, estimateClaimsByCapacity, udtCellCapacity } from './capacity.js';
+import { recipientLockError, recipientLocks } from './recipient.js';
 import { collectCellsByLock } from './rpc.js';
 import { sameScript } from './script.js';
-import type { LiveCell, Script } from './types.js';
+import type { Script } from './types.js';
 
 const WBTC_TYPE_SCRIPT: Script = config.cwbtc.typeScript;
 // CKB put into each cWBTC cell (UDT_CELL_CAPACITY_CKB, default 147 CKB = 146 occupied + 1 margin; upstream used 200).
 const UDT_CELL_CAPACITY = config.udtCellCapacityShannons;
-
-interface WbtcCell extends LiveCell {
-  amount: bigint;
-}
 
 function getClient(): ccc.Client {
   return new ccc.ClientPublicTestnet({ url: config.ckbRpcUrl });
@@ -37,17 +34,7 @@ export async function getFaucetLockScript(): Promise<Script> {
   return (await signer.getAddressObjSecp256k1()).script;
 }
 
-async function collectWbtcCells(faucetLockScript: Script): Promise<WbtcCell[]> {
-  const cells = await collectCellsByLock(faucetLockScript, WBTC_TYPE_SCRIPT);
-  return cells.map((cell) => ({ ...cell, amount: parseUdtAmount(cell.outputData) }));
-}
-
-async function collectPlainCkbCells(faucetLockScript: Script): Promise<LiveCell[]> {
-  const cells = await collectCellsByLock(faucetLockScript, null);
-  return cells.filter((cell) => sameScript(cell.output.lock, faucetLockScript) && cell.output.type === null);
-}
-
-export async function getFaucetBalances(): Promise<{
+export interface FaucetBalances {
   configured: boolean;
   address: string | null;
   cwbtcRaw: string;
@@ -55,7 +42,9 @@ export async function getFaucetBalances(): Promise<{
   plainCapacityShannons: string;
   estimatedClaimsByCwbtc: number;
   estimatedClaimsByCapacity: number;
-}> {
+}
+
+export async function getFaucetBalances(): Promise<FaucetBalances> {
   const address = await getFaucetAddress();
   if (!address) {
     return {
@@ -70,10 +59,11 @@ export async function getFaucetBalances(): Promise<{
   }
 
   const lock = await getFaucetLockScript();
+  // One paginated get_cells over the hot wallet's cells (exact lock search); the cWBTC and plain CKB cells come from it.
   const allCells = await collectCellsByLock(lock);
-  const wbtcCells = await collectWbtcCells(lock);
-  const plainCells = await collectPlainCkbCells(lock);
-  const cwbtcRaw = wbtcCells.reduce((sum, cell) => sum + cell.amount, 0n);
+  const wbtcCells = allCells.filter((cell) => cell.output.type !== null && sameScript(cell.output.type, WBTC_TYPE_SCRIPT));
+  const plainCells = allCells.filter((cell) => cell.output.type === null);
+  const cwbtcRaw = wbtcCells.reduce((sum, cell) => sum + parseUdtAmount(cell.outputData), 0n);
   const totalCapacity = allCells.reduce((sum, cell) => sum + BigInt(cell.output.capacity), 0n);
   const plainCapacity = plainCells.reduce((sum, cell) => sum + BigInt(cell.output.capacity), 0n);
   const claimAmount = BigInt(config.claimAmountRaw);
@@ -89,6 +79,9 @@ export async function getFaucetBalances(): Promise<{
   };
 }
 
+/** getFaucetBalances, reused for BALANCE_CACHE_SECONDS; concurrent callers share one lookup. For /api/balance. */
+export const getCachedFaucetBalances = cachedLoader(getFaucetBalances, config.balanceCacheSeconds * 1000);
+
 export async function transferCwbtc(recipientAddress: string, amountRaw: bigint): Promise<string> {
   const privateKey = faucetPrivateKey();
   const client = getClient();
@@ -96,8 +89,10 @@ export async function transferCwbtc(recipientAddress: string, amountRaw: bigint)
   const faucetLockScript = (await signer.getAddressObjSecp256k1()).script;
   const recipientLock = (await ccc.Address.fromString(recipientAddress, client)).script;
 
-  if (!isAllowedRecipientLock(recipientLock, await recipientLockTypes(client))) {
-    throw new Error(RECIPIENT_LOCK_MESSAGE);
+  // Checked again here, not only when the claim was accepted: a claim queued before a check existed is refused too.
+  const lockError = recipientLockError(recipientLock, await recipientLocks(client));
+  if (lockError) {
+    throw new Error(lockError);
   }
 
   const typeScript = await ccc.Script.fromKnownScript(
@@ -107,9 +102,14 @@ export async function transferCwbtc(recipientAddress: string, amountRaw: bigint)
   );
   const tx = ccc.Transaction.from({});
   const recipientData = ccc.numLeToBytes(amountRaw, 16);
+  const recipientCapacity = udtCellCapacity(UDT_CELL_CAPACITY, { lock: recipientLock, type: typeScript }, recipientData);
+  const capacityError = claimCapacityError(recipientCapacity, UDT_CELL_CAPACITY);
+  if (capacityError) {
+    throw new Error(capacityError);
+  }
   tx.addOutput(
     {
-      capacity: udtCellCapacity(UDT_CELL_CAPACITY, { lock: recipientLock, type: typeScript }, recipientData),
+      capacity: recipientCapacity,
       lock: recipientLock,
       type: typeScript,
     },

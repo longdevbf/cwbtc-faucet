@@ -176,4 +176,4 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for the handoff runbook.
 
 ## Dependency Note
 
-The faucet uses `@ckb-ccc/ccc`, matching the original cWBTC issuance scripts. `npm audit --omit=dev` currently reports low-severity transitive findings in CCC's wallet adapter dependency chain; recheck before public launch and upgrade CCC when a clean release is available.
+The faucet runs on `@ckb-ccc/core` (CCC without its browser wallet connectors, which the server never used); the full `@ckb-ccc/ccc` stays a dev dependency for the tests. Recheck `npm audit --omit=dev` before each release.

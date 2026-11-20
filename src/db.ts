@@ -92,8 +92,30 @@ export function markClaimStatus(
   });
 }
 
+/** Why failPendingClaims marked a claim failed. */
+export const RESTORE_FAILED_ERROR = 'Not sent: the faucet database was restored from a backup. Please claim again.';
+
+/**
+ * After a database restore: marks every claim still queued or processing as failed, so the worker does not send claims
+ * it may already have paid after the backup was taken. Sent claims keep their transaction and are confirmed as usual.
+ * Returns how many claims it changed.
+ */
+export function failPendingClaims(now: number = Date.now()): number {
+  return db
+    .prepare("UPDATE claims SET status = 'failed', error = ?, updated_at = ? WHERE status IN ('queued', 'processing')")
+    .run(RESTORE_FAILED_ERROR, now).changes;
+}
+
+/**
+ * Claims that count for the limits: every claim except one failed by failPendingClaims after a restore, which sent
+ * nothing and asks its user to claim again.
+ */
+const COUNTED_CLAIM_SQL = 'NOT (status = \'failed\' AND error IS ?)';
+
 export function countClaims(whereSql: string, params: unknown[]): number {
-  const row = db.prepare(`SELECT COUNT(*) AS count FROM claims WHERE ${whereSql}`).get(...params) as
+  const row = db
+    .prepare(`SELECT COUNT(*) AS count FROM claims WHERE (${whereSql}) AND ${COUNTED_CLAIM_SQL}`)
+    .get(...params, RESTORE_FAILED_ERROR) as
     | { count: number }
     | undefined;
   return row?.count ?? 0;
@@ -107,15 +129,17 @@ export function hasActiveClaim(address: string): boolean {
 
 export function latestClaimForAddress(address: string): ClaimRow | undefined {
   return db
-    .prepare('SELECT * FROM claims WHERE address = ? ORDER BY created_at DESC LIMIT 1')
-    .get(address) as ClaimRow | undefined;
+    .prepare(`SELECT * FROM claims WHERE address = ? AND ${COUNTED_CLAIM_SQL} ORDER BY created_at DESC LIMIT 1`)
+    .get(address, RESTORE_FAILED_ERROR) as ClaimRow | undefined;
 }
 
 /** The most recent claim from this network (salted IP hash) made at or after `since`, if any. */
 export function latestClaimForIpSince(ipHash: string, since: number): ClaimRow | undefined {
   return db
-    .prepare('SELECT * FROM claims WHERE ip_hash = ? AND created_at >= ? ORDER BY created_at DESC LIMIT 1')
-    .get(ipHash, since) as ClaimRow | undefined;
+    .prepare(
+      `SELECT * FROM claims WHERE ip_hash = ? AND created_at >= ? AND ${COUNTED_CLAIM_SQL} ORDER BY created_at DESC LIMIT 1`,
+    )
+    .get(ipHash, since, RESTORE_FAILED_ERROR) as ClaimRow | undefined;
 }
 
 export function adminSummary(): Record<string, unknown> {
